@@ -1,6 +1,7 @@
 package quic
 
 import (
+	"strings"
 	"time"
 
 	"github.com/lucas-clemente/quic-go/ackhandler"
@@ -9,8 +10,39 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/wire"
 )
 
+// SchedulerType allows for configurable scheduler to be included in dialer /
+// Config
+type SchedulerType uint32
+
+const (
+	// UnknownScheduler indicates that a bad scheduler was provided
+	UnknownScheduler SchedulerType = iota
+
+	// MinRtt identifies the  Minimumn RTT Scheduler
+	MinRtt
+
+	// RoundRobin identifies the Round Robin Scheduler
+	RoundRobin
+)
+
+// string mapping for scheduler types - order MUST match iota values
+var scheduleTypeNames = map[string]SchedulerType{
+	"min-rtt":     MinRtt,
+	"round-robin": RoundRobin,
+}
+
+// ParseSchedulerType exposes a function to translate strings to Scheduler Type
+func ParseSchedulerType(s string) SchedulerType {
+	v, ok := scheduleTypeNames[strings.ToLower(s)]
+	if !ok {
+		return UnknownScheduler
+	}
+
+	return v
+}
+
 type scheduler struct {
-	// XXX Currently round-robin based, inspired from MPTCP scheduler
+	t      SchedulerType
 	quotas map[protocol.PathID]uint
 }
 
@@ -206,10 +238,15 @@ pathLoop:
 
 // Lock of s.paths must be held
 func (sch *scheduler) selectPath(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
-	// XXX Currently round-robin
 	// TODO select the right scheduler dynamically
-	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
-	// return sch.selectPathRoundRobin(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	switch sch.t {
+	case MinRtt:
+		return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	case RoundRobin:
+		return sch.selectPathRoundRobin(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	}
+
+	return nil
 }
 
 // Lock of s.paths must be free (in case of log print)

@@ -87,6 +87,11 @@ type NonFWSession interface {
 	WaitUntilHandshakeComplete() error
 }
 
+// MPConfig contains configuration options specific to multipath clients and servers
+type MPConfig struct {
+	Scheduler SchedulerType
+}
+
 // Config contains all configuration data needed for a QUIC server or client.
 type Config struct {
 	// The QUIC versions that can be negotiated.
@@ -121,8 +126,8 @@ type Config struct {
 	KeepAlive bool
 	// Should we cache handshake parameters? If no cache available, should we create one?
 	CacheHandshake bool
-	// Should the host try to create new paths, if possible?
-	CreatePaths bool
+	// Create new paths using Multipath parameters when non-nil
+	MultipathConfig *MPConfig
 }
 
 // A Listener for incoming QUIC connections
