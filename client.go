@@ -198,7 +198,7 @@ func populateClientConfig(config *Config) *Config {
 		MaxReceiveConnectionFlowControlWindow: maxReceiveConnectionFlowControlWindow,
 		KeepAlive:                             config.KeepAlive,
 		CacheHandshake:                        config.CacheHandshake,
-		CreatePaths:                           config.CreatePaths,
+		MultipathConfig:                       config.MultipathConfig,
 	}
 }
 
@@ -394,7 +394,7 @@ func (c *client) createNewSession(negotiatedVersions []protocol.VersionNumber, c
 	c.session, c.handshakeChan, err = newClientSession(
 		conn,
 		c.pconnMgr,
-		c.config.CreatePaths,
+		c.config.MultipathConfig != nil,
 		c.hostname,
 		c.version,
 		c.connectionID,

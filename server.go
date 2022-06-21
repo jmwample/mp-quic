@@ -166,7 +166,7 @@ var defaultAcceptCookie = func(clientAddr net.Addr, cookie *Cookie) bool {
 func populateServerConfig(config *Config) *Config {
 	if config == nil {
 		config = &Config{
-			CreatePaths: true, // Grant this ability by default for a server
+			MultipathConfig: &MPConfig{Scheduler: MinRtt}, // Grant this ability by default for a server
 		}
 	}
 	versions := config.Versions
@@ -357,7 +357,7 @@ func (s *server) handlePacket(rcvRawPacket *receivedRawPacket) error {
 		session, handshakeChan, err = s.newSession(
 			conn,
 			s.pconnMgr,
-			s.config.CreatePaths,
+			s.config.MultipathConfig != nil,
 			version,
 			hdr.ConnectionID,
 			s.scfg,

@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
@@ -16,7 +17,7 @@ import (
 	"gitlab.com/yawning/obfs4.git/common/log"
 )
 
-func serverSetup(mp bool) (bool, quic.Listener, error) {
+func serverSetup(mp string) (bool, quic.Listener, error) {
 	var err error
 
 	cert, err := generateTLSCertificate()
@@ -24,8 +25,13 @@ func serverSetup(mp bool) (bool, quic.Listener, error) {
 		return false, nil, err
 	}
 
-	if mp {
-		log.Infof("enabling multipath")
+	var schedulerType quic.SchedulerType
+	if mp != "" {
+		schedulerType = quic.ParseSchedulerType(mp)
+		if schedulerType == quic.UnknownScheduler {
+			return false, nil, fmt.Errorf("unknown scheduler")
+		}
+		log.Infof("enabling multipath using %s", mp)
 	}
 
 	// Make a QUIC listener atop the serverPacketConn.
@@ -34,8 +40,8 @@ func serverSetup(mp bool) (bool, quic.Listener, error) {
 		NextProtos:   []string{quicALPN},
 	}
 	quicConfig := &quic.Config{
-		IdleTimeout: quicIdleTimeout,
-		CreatePaths: mp,
+		IdleTimeout:     quicIdleTimeout,
+		MultipathConfig: &quic.MPConfig{Scheduler: schedulerType},
 	}
 
 	// listen should init the pconnManager with configured packet-conns (or default)

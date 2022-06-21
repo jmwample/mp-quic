@@ -43,18 +43,24 @@ func clientAcceptLoop(ln net.Listener, clientHandler func(net.Conn)) error {
 	}
 }
 
-func getChimeraClientHandler(mp bool) func(net.Conn) {
-	if mp {
-		log.Infof("enabling multipath")
+func getChimeraClientHandler(mp string) func(net.Conn) {
+	var schedulerType quic.SchedulerType
+	if mp != "" {
+		schedulerType = quic.ParseSchedulerType(mp)
+		if schedulerType == quic.UnknownScheduler {
+			return nil
+		}
+		log.Infof("enabling multipath using %s", mp)
 	}
+
 	return func(conn net.Conn) {
 		defer conn.Close()
 		termMon.onHandlerStart()
 		defer termMon.onHandlerFinish()
 
 		quicConfig := &quic.Config{
-			IdleTimeout: quicIdleTimeout,
-			CreatePaths: mp,
+			IdleTimeout:     quicIdleTimeout,
+			MultipathConfig: &quic.MPConfig{Scheduler: schedulerType},
 		}
 
 		tlsConfig := &tls.Config{

@@ -33,7 +33,7 @@ var termMon *termMonitor
 var clientConnectAdr = "127.0.0.1:8888"
 
 // initial server Bind address (or only if MP is disabled)
-var serverBindAddr     = ":8888"
+var serverBindAddr = ":8888"
 
 // func handling streams once accepted on the server
 var serverStreamHandler func(io.ReadWriteCloser, string)
@@ -98,11 +98,14 @@ func main() {
 	flag.StringVar(&clientConnectAdr, "connect-addr", "127.0.0.1:8888", "client-side specified address of server.")
 
 	// Multi-path Args
-	mp := flag.Bool("m", false, "multipath")
+	var minRtt, roundRobin bool
+	var mpScheduler string
+	flag.BoolVar(&minRtt, "mr", false, "use min-rtt multipath scheduler")
+	flag.BoolVar(&roundRobin, "rr", false, "use round-robin multipath scheduler")
+	flag.StringVar(&mpScheduler, "scheduler", "", "specify multipath scheduler by name")
 
 	// Server Ards
 	flag.StringVar(&serverBindAddr, "sb", ":8888", "server bind address.")
-
 
 	flag.Parse()
 
@@ -119,8 +122,13 @@ func main() {
 	}
 	utils.SetLogLevel(ll)
 
-	if *mp {
-		log.Debugf("enabling multipath")
+	// if multipath scheduler name is unset, check for preset options.
+	if mpScheduler == "" {
+		if roundRobin {
+			mpScheduler = "round-robin"
+		} else if minRtt {
+			mpScheduler = "min-rtt"
+		}
 	}
 
 	if *forwardHandlerTarget != "" {
@@ -142,11 +150,11 @@ func main() {
 	// Do the managed pluggable transport protocol configuration.
 	if isClient {
 		log.Infof("%s - initializing client transport listeners", execName)
-		ch := getChimeraClientHandler(*mp)
+		ch := getChimeraClientHandler(mpScheduler)
 		launched, ln, err = clientSetup(ch)
 	} else {
 		log.Infof("%s - initializing server transport listeners", execName)
-		launched, ln, err = serverSetup(*mp)
+		launched, ln, err = serverSetup(mpScheduler)
 	}
 	if err != nil {
 		log.Errorf("failed to launch - %s", err)
